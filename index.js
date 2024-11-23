@@ -11,9 +11,9 @@ const transactionRoutes = require('./routes/transaction');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+app.use(cors({ origin: 'https://test-rimba-mpmb4vt35-frayogi-ssitorus-projects.vercel.app' }));
+
 app.use(bodyParser.json());
-app.use(cors());
 
 // Connect to Database
 connectDB();
@@ -23,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
 
+// Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 
 module.exports = app;
