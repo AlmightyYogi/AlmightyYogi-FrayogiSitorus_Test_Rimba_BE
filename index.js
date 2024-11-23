@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 app.use(bodyParser.json());
 app.use(cors());
 
-// Connection DB
+// Connect to Database
 connectDB();
 
 // Routes
@@ -23,4 +23,4 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
 
-app.listen(PORT, () => console.log(`Server runnin on http://localhost:${PORT}`));
+module.exports = app;
