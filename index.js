@@ -11,7 +11,9 @@ const transactionRoutes = require('./routes/transaction');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: 'https://test-rimba-mpmb4vt35-frayogi-ssitorus-projects.vercel.app' }));
+app.use(cors({
+    origin: 'https://test-rimba-api.vercel.app',
+  }));
 
 app.use(bodyParser.json());
 
