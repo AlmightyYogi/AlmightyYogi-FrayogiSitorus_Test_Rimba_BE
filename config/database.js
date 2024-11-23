@@ -8,15 +8,22 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST,
         dialect: 'mysql',
+        logging: false,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 60000,
+            idle: 10000,
+        },
     }
 );
 
 const connectDB = async () => {
     try {
         await sequelize.authenticate();
-        console.log('MYSQL connected successfully');
+        console.log('Connected to MySQL database successfully.');
     } catch (error) {
-        console.error('Nuable to connect to MYSQL:', error.message);
+        console.error('Unable to connect to the database:', error.message);
         process.exit(1);
     }
 };
