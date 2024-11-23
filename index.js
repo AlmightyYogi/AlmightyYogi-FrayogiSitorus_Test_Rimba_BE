@@ -9,7 +9,7 @@ const productRoutes = require('./routes/product');
 const transactionRoutes = require('./routes/transaction');
 
 const app = express();
-const PORT = process.env.PORT || 3306;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(bodyParser.json());
