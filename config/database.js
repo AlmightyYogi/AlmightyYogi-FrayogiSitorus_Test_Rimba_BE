@@ -1,3 +1,4 @@
+const mysql2 = require('mysql2');
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
@@ -8,6 +9,7 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST,
         dialect: 'mysql',
+        dialectModule: mysql2,
         logging: false,
         pool: {
             max: 5,
