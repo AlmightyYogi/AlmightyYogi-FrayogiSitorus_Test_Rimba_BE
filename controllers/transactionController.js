@@ -50,6 +50,7 @@ exports.deleteTransaction = async (req, res) => {
 
 exports.getSummary = async (req, res) => {
     const userId = req.user.id;
+    console.log('User ID:', userId);
 
     try {
         const transactions = await Transaction.findAll({
@@ -57,12 +58,15 @@ exports.getSummary = async (req, res) => {
             include: [{ model: Product }],
         });
 
+        console.log('Transactions:', transactions);
+
         if (transactions.length === 0) {
             return res.status(404).json({ message: 'No transactions found for this user' });
         }
 
         res.status(200).json({ message: 'Transactions summary fetched successfully', transactions });
     } catch (error) {
+        console.error('Error fetching transactions:', error.message);
         res.status(500).json({ message: 'Failed to fetch transaction summary', error: error.message });
     }
 };
