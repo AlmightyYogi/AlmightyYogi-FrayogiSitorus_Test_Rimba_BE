@@ -23,4 +23,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
 
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
 module.exports = app;
