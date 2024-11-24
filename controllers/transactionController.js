@@ -1,72 +1,174 @@
 const { Transaction, Product, User } = require('../models');
+const crypto = require('crypto');
 
 exports.createTransaction = async (req, res) => {
-    const { productIds, userId, totalAmount } = req.body;
+  const { customer, product } = req.body;
+  const userId = req.user.id;
 
-    try {
-        const user = await User.findByPk(userId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+  const generateInvoiceNo = () => {
+    const monthYear = new Date().toISOString().slice(0, 7).replace('-', '');
+    const randomCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    return `INV-${randomCode}-${monthYear}`;
+  };
 
-        const transaction = await Transaction.create({ userId, totalAmount });
-        const products= await Product.findAll({ where: { id: productIds } });
+  try {
+    const invoiceNo = generateInvoiceNo();
+    
+    let totalAmount = 0;
 
-        await transaction.addProducts(products);
+    const productIds = product.map(p => p.productCode);
+    const products = await Product.findAll({
+      where: { productCode: productIds }
+    });
 
-        res.status(201).json({ message: 'Transaction created successfully', transaction });
-    } catch (error) {
-        res.status(400).json({ message: 'Transaction creation failed', error: error.message });
+    const missingProductCodes = productIds.filter(
+      productCode => !products.some(product => product.productCode === productCode)
+    );
+
+    if (missingProductCodes.length > 0) {
+      return res.status(400).json({
+        requestId: null,
+        data: null,
+        message: `Product(s) with code(s) ${missingProductCodes.join(', ')} not found`,
+        success: false,
+      });
     }
+
+    product.forEach(p => {
+      const productItem = products.find(product => product.productCode === p.productCode);
+      if (productItem) {
+        totalAmount += productItem.price * p.quantity;
+      }
+    });
+
+    const transaction = await Transaction.create({
+      invoiceNo,
+      customer,
+      date: new Date(),
+      userId,
+      totalAmount,
+    });
+
+    await transaction.addProducts(products);
+
+    res.status(201).json({
+      requestId: transaction.id,
+      data: transaction,
+      message: 'Transaction created successfully',
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      requestId: null,
+      data: null,
+      message: error.message,
+      success: false,
+    });
+  }
 };
 
 exports.listTransactions = async (req, res) => {
-    try {
-        const transactions = await Transaction.findAll({ 
-            include: [{ model: Product }, { model: User }],
-         });
+    const userId = req.user.id;
 
-         res.json({ message: 'Transactions fetched successfully', transactions });
-    } catch(error) {
-        res.status(500).json({ message: 'Failed to fetch transactions', error: error.message });
+    try {
+        const transactions = await Transaction.findAll({
+            where: { userId },
+            include: [{ model: Product }, { model: User }],
+        });
+
+        res.json({
+            requestId: userId,
+            data: transactions,
+            message: 'Transactions fetched successfully',
+            success: true,
+        });
+    } catch (error) {
+        res.status(500).json({
+            requestId: userId,
+            data: null,
+            message: error.message,
+            success: false,
+        });
     }
 };
 
 exports.deleteTransaction = async (req, res) => {
-    const { transactionId } = req.params;
+    const { id } = req.params;
 
     try {
-        const transaction = await Transaction.findByPk(transactionId);
+        const transaction = await Transaction.findByPk(id);
         if (!transaction) {
-            return res.status(404).json({ message: 'Transaction not found' });
+            return res.status(404).json({
+                requestId: id,
+                data: null,
+                message: 'Transaction not found',
+                success: false
+            });
         }
 
         await transaction.removeProducts(await transaction.getProducts());
         await transaction.destroy();
 
-        res.status(200).json({ message: 'Transaction deleted successfully' });
+        res.status(200).json({
+            requestId: id,
+            data: transaction,
+            message: 'Transaction deleted successfully',
+            success: true
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Failed to delete transaction', error: error.message });
+        res.status(500).json({
+            requestId: null,
+            data: null,
+            message: error.message,
+            success: false
+        });
     }
 };
 
 exports.getSummary = async (req, res) => {
-    const userId = req.user.id;
-    console.log('User ID:', userId);
+  const userId = req.user.id;
 
-    try {
-        const transactions = await Transaction.findAll({
-            where: { userId },
-            include: [{ model: Product }],
-        });
+  try {
+      const transactions = await Transaction.findAll({
+          where: { userId },
+          include: [{ model: Product }],
+      });
 
-        console.log('Transactions:', transactions);
+      if (transactions.length === 0) {
+          return res.status(404).json({
+              message: 'No transactions found for this user',
+              success: false,
+          });
+      }
 
-        if (transactions.length === 0) {
-            return res.status(404).json({ message: 'No transactions found for this user' });
-        }
+      const summary = transactions.map(transaction => {
+          const products = transaction.Products.map(product => ({
+              productCode: product.productCode,
+              productName: product.name,
+              price: product.price,
+              productId: product.id,  // Include product ID
+              quantity: product.TransactionProducts.quantity,
+              totalAmount: product.price * product.TransactionProducts.quantity,
+          }));
 
-        res.status(200).json({ message: 'Transactions summary fetched successfully', transactions });
-    } catch (error) {
-        console.error('Error fetching transactions:', error.message);
-        res.status(500).json({ message: 'Failed to fetch transaction summary', error: error.message });
-    }
+          return {
+              id: transaction.id, // Include transaction ID
+              invoiceNo: transaction.invoiceNo,
+              customer: transaction.customer,
+              date: transaction.date,
+              products: products,
+              totalAmount: transaction.totalAmount,
+          };
+      });
+
+      res.status(200).json({
+          data: summary,
+          success: true,
+      });
+  } catch (error) {
+      res.status(500).json({
+          message: error.message,
+          success: false,
+      });
+  }
 };
